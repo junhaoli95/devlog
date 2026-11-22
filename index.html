@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="记录开发中实际做过的改动、用到的技术和可见的结果。">
+  <title>开发日志</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --paper: #fbfcff;
+      --ink: #161d2d;
+      --muted: #48566c;
+      --line: #d5dfed;
+      --accent: #244db7;
+      --panel: #f0f5ff;
+      font-family: "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); }
+    .shell { width: min(100% - 2.5rem, 54rem); margin-inline: auto; }
+    header {
+      border-top: .375rem solid var(--accent);
+      border-bottom: 1px solid var(--line);
+      padding-block: clamp(3rem, 9vw, 6rem) clamp(2rem, 6vw, 3.5rem);
+    }
+    h1 { font-size: clamp(2.5rem, 8vw, 4.5rem); letter-spacing: -.06em; margin: 0; line-height: 1.12; }
+    main { padding-block: clamp(2rem, 5vw, 3.5rem) 5rem; }
+    .status { margin: 0; padding: 1.35rem 1.5rem; border: 1px solid var(--line); border-radius: .75rem; background: var(--panel); color: var(--muted); }
+    article { display: grid; grid-template-columns: 8rem minmax(0, 1fr); column-gap: 1.75rem; padding-block: 1.7rem 2.2rem; border-top: 1px solid var(--line); }
+    article:last-child { border-bottom: 1px solid var(--line); }
+    time { font-size: .9375rem; color: var(--accent); font-variant-numeric: tabular-nums; padding-top: .375rem; }
+    h2 { font-size: clamp(1.25rem, 3vw, 1.625rem); line-height: 1.4; margin: 0 0 .65rem; }
+    p { font-size: 1rem; line-height: 1.75; }
+    .body { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+    .media { margin: 1rem 0 0; }
+    img, video { display: block; max-width: 100%; max-height: 35rem; border-radius: .5rem; }
+    video { background: #181c24; }
+    @media (max-width: 36rem) {
+      article { grid-template-columns: minmax(0, 1fr); row-gap: .5rem; }
+      time { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <header><div class="shell"><h1>开发日志</h1></div></header>
+  <main class="shell">
+    <p class="status" id="status" role="status" hidden></p>
+    <noscript><p class="status">启用 JavaScript 后可查看开发日志。</p></noscript>
+    <div id="timeline" aria-label="日志时间线"></div>
+  </main>
+  <template id="post">
+    <article>
+      <time></time>
+      <div>
+        <h2></h2>
+        <p class="body"></p>
+        <figure class="media" hidden></figure>
+      </div>
+    </article>
+  </template>
+  <script>
+    const status = document.querySelector("#status");
+    const timeline = document.querySelector("#timeline");
+    const template = document.querySelector("#post");
+    const mediaPaths = {
+      image: /^media\/[a-z0-9][a-z0-9_-]*\/[a-z0-9][a-z0-9_-]*\.(?:png|jpe?g|webp|avif|gif)$/,
+      video: /^media\/[a-z0-9][a-z0-9_-]*\/[a-z0-9][a-z0-9_-]*\.(?:mp4|webm)$/
+    };
+
+    function message(text) {
+      status.textContent = text;
+      status.hidden = false;
+    }
+
+    function validPost(post) {
+      const date = post?.date;
+      const publicationDay = typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)
+        ? new Date(date + "T00:00:00Z")
+        : null;
+      return publicationDay && !Number.isNaN(publicationDay.valueOf()) &&
+        publicationDay.toISOString().slice(0, 10) === date &&
+        typeof post.title === "string" && post.title.trim() &&
+        typeof post.text === "string" && post.text.trim();
+    }
+
+    function addPost(post) {
+      const entry = template.content.cloneNode(true);
+      const date = entry.querySelector("time");
+      date.dateTime = post.date;
+      date.textContent = post.date;
+      entry.querySelector("h2").textContent = post.title;
+      entry.querySelector(".body").textContent = post.text;
+      const media = post.media;
+      const path = media && Object.hasOwn(mediaPaths, media.type) ? mediaPaths[media.type] : null;
+      if (path && typeof media.src === "string" && path.test(media.src) &&
+          typeof media.alt === "string" && media.alt.trim()) {
+        const figure = entry.querySelector("figure");
+        const element = document.createElement(media.type === "image" ? "img" : "video");
+        element.src = media.src;
+        if (media.type === "image") {
+          element.alt = media.alt;
+          element.loading = "lazy";
+        } else {
+          element.controls = true;
+          element.playsInline = true;
+          element.preload = "metadata";
+          element.setAttribute("aria-label", media.alt);
+        }
+        figure.append(element);
+        figure.hidden = false;
+      }
+      timeline.append(entry);
+    }
+
+    async function loadTimeline() {
+      try {
+        const response = await fetch("./posts.json", { cache: "no-cache" });
+        if (!response.ok) throw new Error("Could not load posts");
+        const entries = await response.json();
+        if (!Array.isArray(entries) || !entries.every(validPost)) throw new Error("Invalid posts");
+        entries.sort((first, second) => second.date.localeCompare(first.date));
+        entries.forEach(addPost);
+        if (!entries.length) message("还没有发布的日志。");
+      } catch {
+        message("暂时无法读取日志，请稍后刷新。");
+      }
+    }
+
+    loadTimeline();
+  </script>
+</body>
+</html>
