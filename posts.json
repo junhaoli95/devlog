@@ -1,5 +1,22 @@
 [
   {
+    "date": "2026-11-27",
+    "title": "素材台的动画规格检查和 3D 预览",
+    "text": "黄金仔的提示词写了六帧，实际提交成了四帧。素材台现在会在提交前提示这类冲突。\n\n忍者 V2 也能在网页里打开原 GLB，旋转、缩放，播放走路和突进。",
+    "media": [
+      {
+        "type": "image",
+        "src": "media/asset-review/animation-spec.png",
+        "alt": "黄金仔规格核对前后对比，右侧显示原文六帧和实际提交四帧"
+      },
+      {
+        "type": "image",
+        "src": "media/asset-review/ninja-3d-preview.png",
+        "alt": "忍者 V2 的线上 3D 预览和动画播放控件"
+      }
+    ]
+  },
+  {
     "date": "2026-11-23",
     "title": "用 asset.config 把 Git 仓库接入素材台",
     "text": "素材台用 Git 仓库根目录里的 asset.config 识别已适配的项目。选定的原图、提示词和图集动画参数都随仓库保存，重新克隆后也能在素材台里打开。\n\n跨账号 Fork 跑通后，我撤掉了同步脚本，改用同一个 Linux 用户开发，需要时在 Codex 里切账号。",

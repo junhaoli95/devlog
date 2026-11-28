@@ -33,6 +33,7 @@
     h2 { font-size: clamp(1.25rem, 3vw, 1.625rem); line-height: 1.4; margin: 0 0 .65rem; }
     p { font-size: 1rem; line-height: 1.75; }
     .body { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+    .body-part + .body-part { margin-top: 1.5rem; }
     .media { margin: 1rem 0 0; }
     img, video { display: block; max-width: 100%; max-height: 35rem; border-radius: .5rem; }
     video { background: #181c24; }
@@ -54,8 +55,7 @@
       <time></time>
       <div>
         <h2></h2>
-        <p class="body"></p>
-        <figure class="media" hidden></figure>
+        <div class="post-content"></div>
       </div>
     </article>
   </template>
@@ -84,18 +84,18 @@
         typeof post.text === "string" && post.text.trim();
     }
 
-    function addPost(post) {
-      const entry = template.content.cloneNode(true);
-      const date = entry.querySelector("time");
-      date.dateTime = post.date;
-      date.textContent = post.date;
-      entry.querySelector("h2").textContent = post.title;
-      entry.querySelector(".body").textContent = post.text;
-      const media = post.media;
+    function addBodyPart(content, text, media) {
+      const part = document.createElement("div");
+      part.className = "body-part";
+      const paragraph = document.createElement("p");
+      paragraph.className = "body";
+      paragraph.textContent = text;
+      part.append(paragraph);
       const path = media && Object.hasOwn(mediaPaths, media.type) ? mediaPaths[media.type] : null;
       if (path && typeof media.src === "string" && path.test(media.src) &&
           typeof media.alt === "string" && media.alt.trim()) {
-        const figure = entry.querySelector("figure");
+        const figure = document.createElement("figure");
+        figure.className = "media";
         const element = document.createElement(media.type === "image" ? "img" : "video");
         element.src = media.src;
         if (media.type === "image") {
@@ -108,8 +108,27 @@
           element.setAttribute("aria-label", media.alt);
         }
         figure.append(element);
-        figure.hidden = false;
+        part.append(figure);
       }
+      content.append(part);
+    }
+
+    function addPost(post) {
+      const entry = template.content.cloneNode(true);
+      const date = entry.querySelector("time");
+      date.dateTime = post.date;
+      date.textContent = post.date;
+      entry.querySelector("h2").textContent = post.title;
+
+      const content = entry.querySelector(".post-content");
+      if (Array.isArray(post.media)) {
+        post.text.split("\n\n").forEach((paragraph, index) => {
+          addBodyPart(content, paragraph, post.media[index]);
+        });
+      } else {
+        addBodyPart(content, post.text, post.media);
+      }
+
       timeline.append(entry);
     }
 
